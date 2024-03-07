@@ -1,4 +1,25 @@
-return require("telescope").register_extension {
+local pickers = require "telescope.pickers"
+local finders = require "telescope.finders"
+local conf = require("telescope.config").values
+local actions = require "telescope.actions"
+local action_state = require "telescope.actions.state"
+local strings = require "plenary.strings"
+local entry_display = require "telescope.pickers.entry_display"
+local utils = require "telescope.utils"
+
+local function send_open_to_qflist(prompt_bufnr)
+  local picker = action_state.get_current_picker(prompt_bufnr)
+  local manager = picker.manager
+  local qf_entries = {}
+  for entry in manager:iter() do
+    table.insert(qf_entries, {text = entry['ordinal']})
+  end
+  actions.close(prompt_bufnr)
+  vim.fn.setqflist(qf_entries, 'r')
+  vim.cmd [[botright copen]]
+end
+
+return require 'telescope'.register_extension {
   setup = function(topts)
     local specific_opts = vim.F.if_nil(topts.specific_opts, {})
     topts.specific_opts = nil
@@ -6,15 +27,6 @@ return require("telescope").register_extension {
     if #topts == 1 and topts[1] ~= nil then
       topts = topts[1]
     end
-
-    local pickers = require "telescope.pickers"
-    local finders = require "telescope.finders"
-    local conf = require("telescope.config").values
-    local actions = require "telescope.actions"
-    local action_state = require "telescope.actions.state"
-    local strings = require "plenary.strings"
-    local entry_display = require "telescope.pickers.entry_display"
-    local utils = require "telescope.utils"
 
     __TelescopeUISelectSpecificOpts = vim.F.if_nil(
       __TelescopeUISelectSpecificOpts,
@@ -127,7 +139,9 @@ return require("telescope").register_extension {
               }
             end,
           },
-          attach_mappings = function(prompt_bufnr)
+          attach_mappings = function(prompt_bufnr, map)
+            map('n', '<C-Tab>', send_open_to_qflist, { nowait = true, })
+            map('i', '<C-Tab>', send_open_to_qflist, { nowait = true, })
             actions.select_default:replace(function()
               local selection = action_state.get_selected_entry()
               local cb = on_choice

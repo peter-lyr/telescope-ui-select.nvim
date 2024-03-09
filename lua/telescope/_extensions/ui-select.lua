@@ -1,3 +1,5 @@
+local B = require 'base'
+
 local pickers = require "telescope.pickers"
 local finders = require "telescope.finders"
 local conf = require("telescope.config").values
@@ -17,6 +19,30 @@ local function send_open_to_qflist(prompt_bufnr)
   actions.close(prompt_bufnr)
   vim.fn.setqflist(qf_entries, 'r')
   vim.cmd [[botright copen]]
+end
+
+local function grep_string(prompt_bufnr)
+  local selected_entry = action_state.get_selected_entry(prompt_bufnr)
+  actions.close(prompt_bufnr)
+  local project_path = selected_entry.ordinal
+  if not B.file_exists(project_path) then
+    return
+  end
+  local cmd = B.format('Telescope grep_string shorten_path=true word_match=-w only_sort_text=true search= cwd=%s', project_path)
+  B.cmd(cmd)
+  B.notify_info('Telescope grep_string cwd=' .. project_path)
+end
+
+local function live_grep(prompt_bufnr)
+  local selected_entry = action_state.get_selected_entry(prompt_bufnr)
+  actions.close(prompt_bufnr)
+  local project_path = selected_entry.ordinal
+  if not B.file_exists(project_path) then
+    return
+  end
+  local cmd = B.format('Telescope live_grep cwd=%s', project_path)
+  B.cmd(cmd)
+  B.notify_info(cmd)
 end
 
 return require 'telescope'.register_extension {
@@ -142,6 +168,13 @@ return require 'telescope'.register_extension {
           attach_mappings = function(prompt_bufnr, map)
             map('n', '<C-Tab>', send_open_to_qflist, { nowait = true, })
             map('i', '<C-Tab>', send_open_to_qflist, { nowait = true, })
+
+            map('n', ';', live_grep, { nowait = true, })
+            map('i', '<f1>', live_grep, { nowait = true, })
+
+            map('n', 'c', grep_string, { nowait = true, })
+            map('i', '<F4>', grep_string, { nowait = true, })
+
             actions.select_default:replace(function()
               local selection = action_state.get_selected_entry()
               local cb = on_choice
